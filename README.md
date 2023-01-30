@@ -34,6 +34,7 @@ Change controls settings in runtime without re-building the project with new cha
 ### Mobile Integration
 This repo will soon have support for mobile controls!
 ### Others
+- Implementation of modular state machine for player movement.
 - Possible revamp of how Player Input is being managed in preparation for the upcoming mobile controls.
 - New and better slope detection and movement!
 - Save System with Binary Reader/Writer and JSON examples.
