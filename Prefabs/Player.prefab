@@ -154,6 +154,34 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   moveData: {fileID: 11400000, guid: be83807c9267fbe4b99a1bd811c53179, type: 2}
   playerManager: {fileID: 7201003986977753929}
+  allowMove: 1
+  changeSpeed: 1
+  speed: 0
+  _desiredSpeed: 0
+  velocity: {x: 0, y: 0, z: 0}
+  slopeMoveDirection: {x: 0, y: 0, z: 0}
+  moveSmoothen: {x: 0, y: 0, z: 0}
+  x: 0
+  y: 0
+  isMoving: 0
+  isWalking: 0
+  isSprinting: 0
+  _groundSmoothen: 0
+  attemptingCrouch: 0
+  alreadySliding: 0
+  isSliding: 0
+  isCrouching: 0
+  toggleCrouch: 1
+  stopSlide: 1
+  useGravity: 1
+  jumped: 0
+  attemptingJump: 0
+  onSlope: 0
+  Grounded: 0
+  ccGrounded: 0
+  groundForce: 5
+  CoyoteTime: 0
+  fallSpeed: 0
 --- !u!114 &7066643054708243630
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -197,6 +225,15 @@ MonoBehaviour:
     - {fileID: 8300000, guid: 424344fcf93092d4781b27247f0c42ce, type: 3}
     - {fileID: 8300000, guid: 21c3d4b370a02db468a451ea4caf0d43, type: 3}
     - {fileID: 8300000, guid: b970eee71065f40448be589f52e96bd8, type: 3}
+  landSfx:
+  - audioClip:
+    - {fileID: 8300000, guid: d910c52d1e70c754e99740909a28cc97, type: 3}
+  - audioClip:
+    - {fileID: 8300000, guid: 157476d5701ef254daab0c4f65c1f772, type: 3}
+  - audioClip:
+    - {fileID: 8300000, guid: c9af6f46a5cd8124b812c4a3ed198e49, type: 3}
+  - audioClip:
+    - {fileID: 8300000, guid: 462d2a5df6d61ec498214ec83d27637c, type: 3}
   defaultFootsteps:
   - {fileID: 8300000, guid: 5e2e380f4d6ef8b45a6072c0a1d56d63, type: 3}
   - {fileID: 8300000, guid: fea48b3c23417e849b641a93fd35790f, type: 3}
@@ -204,9 +241,14 @@ MonoBehaviour:
   - {fileID: 8300000, guid: 97579ee73fb4eb34797eee4afa492fdc, type: 3}
   - {fileID: 8300000, guid: bbc04b7c90d5e0348bee6062a1f850a0, type: 3}
   - {fileID: 8300000, guid: f0214cf7dca58344cbf981cb289bf3a2, type: 3}
+  defaultLandSfx:
+  - {fileID: 8300000, guid: 5e2e380f4d6ef8b45a6072c0a1d56d63, type: 3}
   jumpSound: {fileID: 8300000, guid: 083b2720b790e1d49bc11bda07b9393b, type: 3}
+  slideSound: {fileID: 8300000, guid: 9c60cca07bae5ad46a3924b4bccf6298, type: 3}
   footstepRate: 0.85
   currentMaterial: 0
+  doFootsteps: 0
+  doLandSfx: 0
 --- !u!82 &984220189444323018
 AudioSource:
   m_ObjectHideFlags: 0
@@ -216,7 +258,7 @@ AudioSource:
   m_GameObject: {fileID: 7201003986977753923}
   m_Enabled: 1
   serializedVersion: 4
-  OutputAudioMixerGroup: {fileID: -3338431717014704300, guid: c2c6662762eae8f4b851bfa86b3061b5,
+  OutputAudioMixerGroup: {fileID: 24300002, guid: 424cc4b0c92ae204b8e13615de4dd770,
     type: 2}
   m_audioClip: {fileID: 0}
   m_PlayOnAwake: 0
