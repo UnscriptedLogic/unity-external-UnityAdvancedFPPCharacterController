@@ -8,7 +8,7 @@ Other than having the purpose of giving a great starting point/template for impl
 ## Before You Use
 **Disclaimer** - There are portions of code here that I have [taken from tutorials and resources](#credits). Even though they are free to use I still want to clarify that I use assets and resources that may be outside of my field of expertise at the moment because I am constantly learning something new everyday.<br>
 
-Before you use this repo as a template in any means, this project is currently being actively developed and many things are subject to change. Kindly star the repo before forking or cloning, please! <br>
+Before you use this repo as a template in any means, this project is currently being actively developed and many things are subject to change. Kindly star the repo before using, forking or cloning, please! <br>
 
 **01/12/2023 UPDATE** - My laptop broke, all updates will be postponed until I get a new PC. Sorry for the inconvenience!
 
@@ -29,15 +29,11 @@ This README will be pretty lengthy in the near future. So, if you want to skip o
 
 ## Upcoming Features and Updates
 This repo now had its **first** stable release, but there will be more as I refactor old and unhealthy code to make better iterations of existing features, and introduce completely new ones!
-### Settings UI
-Change controls settings in runtime without re-building the project with new changes made to the Player GameObject's Inpsector! It also comes with a working save system.
 ### Mobile Integration
 This repo will soon have support for mobile controls!
 ### Others
 - Implementation of modular state machine for player movement.
 - Possible revamp of how Player Input is being managed in preparation for the upcoming mobile controls.
-- New and better slope detection and movement!
-- Save System with Binary Reader/Writer and JSON examples.
 
 <br>
 
@@ -91,4 +87,4 @@ Something's wrong with the code or you know better workarounds and alternatives?
 
 ## Credits
 - This project would not have been possible without the help of wonderful people at [Samyam](https://www.youtube.com/@samyam)'s [Discord Server](https://discord.com/invite/B9bjMxj)!
-- [Event-based input](https://www.youtube.com/watch?v=8Yih0p2Kvy0&t=3s), [Camera headbobbing](https://www.youtube.com/watch?v=5MbR2qJK8Tc&t=1s), Smooth crouching, and [Slope movement](https://www.youtube.com/watch?v=GI5LAbP5slE) are implemented and modified from [Hero 3D](https://www.youtube.com/@hero3d899).
+- [Event-based input](https://www.youtube.com/watch?v=8Yih0p2Kvy0&t=3s), [Camera headbobbing](https://www.youtube.com/watch?v=5MbR2qJK8Tc&t=1s), and Smooth crouching are implemented and modified from [Hero 3D](https://www.youtube.com/@hero3d899).
