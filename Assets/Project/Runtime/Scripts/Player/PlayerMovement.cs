@@ -19,8 +19,11 @@ public class PlayerMovement : MonoBehaviour
     public bool allowMove = true;
     
     [Header("Speed")]
+    public bool changeSpeed;
     public float speed = 0f;
+    public float _desiredSpeed = 0f;
     public Vector3 velocity = Vector3.zero;
+    public Vector3 slopeMoveDirection = Vector3.zero;
     public Vector3 moveSmoothen = Vector3.zero;
     public float x = 0f, y = 0f;
     public bool isMoving = false;
@@ -29,9 +32,9 @@ public class PlayerMovement : MonoBehaviour
     // A method where we send booleans to define how fast the controller should move
     public float desiredSpeed(bool condition)
     {
-        if (condition = isCrouching) return speed = moveData.crouchSpeed;
-        else if (condition = isSprinting) return speed = moveData.sprintSpeed;
-        else return speed = moveData.walkSpeed;
+        if (condition = isCrouching) return _desiredSpeed = moveData.crouchSpeed;
+        else if (condition = isSprinting) return _desiredSpeed = moveData.sprintSpeed;
+        else return _desiredSpeed = moveData.walkSpeed;
     }
     public float _groundSmoothen;
     // A method where PlayerMovement send booleans to define how smooth or slipperly the floor is
@@ -42,19 +45,24 @@ public class PlayerMovement : MonoBehaviour
         else return _groundSmoothen = moveData.walkDamp;
     }
 
-    [Header("Crouching")]
+    [Header("Crouching and Sliding")]
     public bool attemptingCrouch = false;
+    public bool alreadySliding = false;
+    public bool isSliding = true;
     public bool isCrouching = false;
     public bool toggleCrouch;
+    public bool stopSlide = true;
 
     [Header("Jumping")]
     public bool useGravity = true;
+    public bool jumped = false;
     public bool attemptingJump = false;
     
     [Header("Ground Detection")]
+    public bool onSlope = false;
     public bool Grounded = false;
     public bool ccGrounded = false;
-    public bool Fell = false;
+    public float groundForce = 10f;
     public float CoyoteTime;
     /**
     Only true if CoyoteTime has not exceeded the limit. Make sure CoyoteTimeMax only has a small value
@@ -64,13 +72,6 @@ public class PlayerMovement : MonoBehaviour
     {
         return CoyoteTime < moveData.CoyoteTimeMax;
     }
-    /**
-    Does the same for coyoteGrounded() but it should take a little longer.
-    */
-    public bool isFalling()
-    {
-        return CoyoteTime > moveData.FallTimeMax;
-    }
     public float fallSpeed = 0f;
 
     #region Initialization and Deactivation Logic
@@ -79,32 +80,40 @@ public class PlayerMovement : MonoBehaviour
     private IEnumerator Start() // Initialize edge-triggered inputs only after PlayerInput's Instance is defined.
     {
         yield return new WaitForEndOfFrame();
-        PlayerInput.Instance.jumpAction.performed += JumpInput;
-        PlayerInput.Instance.sprintAction.performed += SprintInput;
-        PlayerInput.Instance.sprintAction.canceled += WalkInput;
-        PlayerInput.Instance.crouchAction.performed += CrouchInput;
-        PlayerInput.Instance.crouchAction.canceled += StandInput;
+        ToggleInputs(true);
         playerInputInit = true;
     }
     
     private void OnEnable() // Enable edge-triggered inputs.
     {
         if (!playerInputInit) return;
-        Debug.Log("cockadoodleoooo");
-        PlayerInput.Instance.jumpAction.performed += JumpInput;
-        PlayerInput.Instance.sprintAction.performed += SprintInput;
-        PlayerInput.Instance.sprintAction.canceled += WalkInput;
-        PlayerInput.Instance.crouchAction.performed += CrouchInput;
-        PlayerInput.Instance.crouchAction.canceled += StandInput;
+        ToggleInputs(true);
     }
 
     private void OnDisable() // Disable edge-triggered inputs.
     {
-        PlayerInput.Instance.jumpAction.performed -= JumpInput;
-        PlayerInput.Instance.sprintAction.performed -= SprintInput;
-        PlayerInput.Instance.sprintAction.canceled -= WalkInput;
-        PlayerInput.Instance.crouchAction.performed -= CrouchInput;
-        PlayerInput.Instance.crouchAction.canceled -= StandInput;
+        ToggleInputs(false);
+    }
+
+    private void ToggleInputs(bool enable)
+    {
+        switch(enable)
+        {
+            case true:
+                PlayerInput.Instance.jumpAction.performed += JumpInput;
+                PlayerInput.Instance.sprintAction.performed += SprintInput;
+                PlayerInput.Instance.sprintAction.canceled += WalkInput;
+                PlayerInput.Instance.crouchAction.performed += CrouchInput;
+                PlayerInput.Instance.crouchAction.canceled += StandInput;
+            break;
+            case false:
+                PlayerInput.Instance.jumpAction.performed -= JumpInput;
+                PlayerInput.Instance.sprintAction.performed -= SprintInput;
+                PlayerInput.Instance.sprintAction.canceled -= WalkInput;
+                PlayerInput.Instance.crouchAction.performed -= CrouchInput;
+                PlayerInput.Instance.crouchAction.canceled -= StandInput;
+            break;
+        }
     }
     #endregion
 
@@ -140,15 +149,64 @@ public class PlayerMovement : MonoBehaviour
     */
     private void ApplyGravity()
     {
-        velocity.y -= Physics.gravity.y * -2f * Time.deltaTime;
-        
+        if (useGravity) velocity.y -= Physics.gravity.y * -2f * Time.deltaTime;
+
         playerManager.controller.Move(new Vector3(0f, velocity.y, 0f) * Time.deltaTime);
 
-        /*
+        /**
         fallSpeed defines how much  * o o m p h *  the camera headbobbing should have upon landing. It should only be
         tracked when mid-air for bug-fixing. (It doesn't work well when it tracks even when grounded)
         */
+
 		if (!playerManager.controller.isGrounded) fallSpeed = playerManager.controller.velocity.y;
+    }
+    private bool fell;
+    /**
+    Checks if the following conditions are met while SprintInput() is being called.
+    (Check the GroundChecker() method.)
+    */
+    Coroutine tagCoroutine;
+    public bool Fell
+    {
+        get { return fell; }
+        set
+        {
+            if (fell == value) return;
+
+            fell = value;
+            if (fell)
+            {
+                jumped = false;
+                if (CoyoteTime > moveData.FallTimeMax)
+                {
+                    playerManager.playerAudio.doLandSfx = true;
+                    playerManager.playerAudio.DoSFX(playerManager.playerAudio.doLandSfx);
+                    if(moveData.tagMovement) StartTag();
+                }
+                if (CoyoteTime > moveData.CoyoteTimeMax && !playerManager.cameraManager.reduceMotion)
+                {
+                    playerManager.cameraManager.LandBob(new Vector3(0f, fallSpeed, 0f));
+                }
+                CoyoteTime = 0;
+            }
+        }
+    }
+
+    public void StartTag() // Slow down movement speed on land, can also be used for when player is shot
+    {
+        if (tagCoroutine != null) StopCoroutine(TagMovement());
+        tagCoroutine = StartCoroutine(TagMovement());
+    }
+
+    private IEnumerator TagMovement()
+    {
+        changeSpeed = false;
+        speed = moveData.tagSpeed;
+        yield return new WaitForSeconds(moveData.tagDelay);
+        if(coyoteGrounded())
+        {
+            changeSpeed = true;
+        }
     }
 
     private void GroundChecker()
@@ -157,15 +215,12 @@ public class PlayerMovement : MonoBehaviour
         These two are for debugging only, because controller.isGrounded and coyoteGrounded() does not appear
         in inspector.
         */
+        Fell = playerManager.controller.isGrounded;
         ccGrounded = playerManager.controller.isGrounded;
         Grounded = coyoteGrounded();
 
         // Extra sprinting logic, bug-fixing and etc
         QueueSprint = coyoteGrounded() && isCrouching && isMoving;
-        if (isSprinting && isCrouching)
-        {
-            isSprinting = false;
-        }
 
         // Extra crouching logic, bug-fixing and etc
         QueueCrouch = playerManager.controller.isGrounded;
@@ -175,29 +230,10 @@ public class PlayerMovement : MonoBehaviour
         }
 
         // Manage coyote time. Coyote time is the extra time that the controller has to be able to jump in mid-air.
-        if (playerManager.controller.isGrounded)
-        {
-            CoyoteTime = 0;
-            if (Fell) Invoke(nameof(ResetFall), Time.fixedDeltaTime);
-        }
-        else
+        if (!playerManager.controller.isGrounded)
         {
             CoyoteTime += Time.deltaTime;
         }
-
-        /**
-        It was written intentionally like this way instead of Fell = isFalling() because you
-        need to delay along the Invoke for ResetFall() above.
-        */
-        if (isFalling())
-        {
-            Fell = true;
-        }
-    }
-
-    private void ResetFall() // Again, you need the delay.
-    {
-        Fell = false;
     }
     #endregion
     
@@ -207,8 +243,12 @@ public class PlayerMovement : MonoBehaviour
         var speedCondition = isCrouching && isSprinting;
 
         // Check PlayerMoveData for these two.
-        groundSmoothen(speedCondition);
-        desiredSpeed(speedCondition);
+        if(changeSpeed)
+        {
+            speed = Mathf.Lerp(speed, _desiredSpeed, moveData.acceleration * Time.deltaTime);
+            groundSmoothen(speedCondition);
+            desiredSpeed(speedCondition);
+        }
 
         isWalking = !isSprinting && !isCrouching;
     }
@@ -217,25 +257,20 @@ public class PlayerMovement : MonoBehaviour
 
     #region Slope Movement
     private RaycastHit slopeHit;
-    private bool OnSlope() // Checks using a Raycast below the controller to see if it's stepping on a slope (duh)
-    {
-        if (!coyoteGrounded()) return false;
-
-        if (Physics.Raycast(transform.position, Vector3.down, out slopeHit, (playerManager.controller.height / 2) + moveData.groundDistance))
-        {
-            float slopeAngle = Vector3.Angle(slopeHit.normal, Vector3.up);
-            if (slopeAngle > playerManager.controller.slopeLimit) return true;
-        }
-
-        return false;
+    private Vector3 normalVector;
+    private bool IsFloor(Vector3 floor) {
+        float angle = Vector3.Angle(Vector3.up, floor);
+        return angle < Mathf.Abs(playerManager.controller.slopeLimit);
     }
-    private void SlopeMovement() // Overrides the moveDir Vector3
-    {
-        Vector3 slopeDirection = Vector3.up - slopeHit.normal * Vector3.Dot(Vector3.up, slopeHit.normal);
-        float slideSpeed = speed + moveData.slopeSlideSpeed + Time.deltaTime;
 
-        moveDir = slopeDirection * -slideSpeed;
-        moveDir.y = moveDir.y - slopeHit.point.y;
+    private void OnControllerColliderHit(ControllerColliderHit hit)
+    {
+        if (!coyoteGrounded()) return;
+        if (IsFloor(hit.normal))
+        {
+            normalVector = normalVector != hit.normal ? hit.normal : normalVector;
+		    onSlope = (Vector3.Angle(Vector3.up, hit.normal) > 1f);
+        }
     }
     #endregion
     private void Move()
@@ -246,19 +281,18 @@ public class PlayerMovement : MonoBehaviour
         // Checks if controller is moving, this makes sure that sprinting is bug-free
         isMoving = (new Vector3(velocity.x, 0f, velocity.z) != Vector3.zero);
 
-        if (OnSlope())
-        {
-            SlopeMovement();
-        }
-
         // antiBump makes sure that slope movement is not bumpy and that the controller stays in place on the y-axis when grounded.
-        if (velocity.y < 0 && playerManager.controller.isGrounded) velocity.y = -moveData.antiBump;
+        if (velocity.y < 0 && playerManager.controller.isGrounded) velocity.y = -groundForce;
+
         // Probably makes it so the controller can't do some quasi-vaulting, might remove later because I barely notice any difference
         playerManager.controller.stepOffset = coyoteGrounded() ? 0.3f : 0f;
         // moveSmoothen is responsible for creating some sort of inertia and overall makes movement smoother.
         moveSmoothen = Vector3.MoveTowards(moveSmoothen, moveDir, (playerManager.controller.isGrounded ? _groundSmoothen : moveData.airSmoothen) * Time.deltaTime);
-        
-        playerManager.controller.Move(moveSmoothen * speed * Time.deltaTime);
+
+        var dirVector = isSliding ? slideDir : moveSmoothen;
+        slopeMoveDirection = Vector3.ProjectOnPlane((Vector3)dirVector, normalVector);
+
+        playerManager.controller.Move(new Vector3(dirVector.x, !jumped ? slopeMoveDirection.y : dirVector.y, dirVector.z) * (isSliding ? moveData.slideSpeed : speed) * Time.deltaTime);
 
         // Will be useful for PlayerAudio, remove if you do not need PlayerAudio.
         velocity.x = playerManager.controller.velocity.x;
@@ -272,6 +306,7 @@ public class PlayerMovement : MonoBehaviour
     */
 
     #region Sprint Logic
+    #region Sprint Input Logic
     // These two handles the input for sprinting, they're separated from the actual sprinting code to make queing possible.
     private void SprintInput(InputAction.CallbackContext ctx)
     {
@@ -302,7 +337,8 @@ public class PlayerMovement : MonoBehaviour
             }
         }
     }
-
+    #endregion
+    
     // These two are responsible for the actual sprinting feature
     private void StartSprint()
     {
@@ -318,12 +354,16 @@ public class PlayerMovement : MonoBehaviour
     // Mmm yes... jump
     private void JumpInput(InputAction.CallbackContext ctx)
     {
-        Jump();
+        if(!jumped) Jump();
     }
     private void Jump()
     {
         if (!coyoteGrounded()) return;
-
+        jumped = true;
+        if(isSliding)
+        {
+            StopSlide();
+        }
         /**
         These three lines of code calls for the playerAudio script to play jump sound effects.
         Remove it if you do not need it.
@@ -337,6 +377,7 @@ public class PlayerMovement : MonoBehaviour
     #endregion
 
     #region  Crouch Logic
+    #region Crouch Input Logic
     // These two handles the input for crouching, they're separated from the actual crouching code to make queing possible.
     private void CrouchInput(InputAction.CallbackContext ctx)
     {
@@ -375,9 +416,12 @@ public class PlayerMovement : MonoBehaviour
             }
         }
     }
+    #endregion
 
+    Vector3 slideDir;
+    float test;
     // These two are responsible for the actual crouching feature
-    Coroutine crouchRoutine;
+    Coroutine crouchRoutine, slideCoroutine;
     private void StartCrouch()
     {
         if (!coyoteGrounded()) return; // Only crouch when grounded
@@ -390,6 +434,20 @@ public class PlayerMovement : MonoBehaviour
                 isCrouching = true;
             break;
         }
+
+        if (isSprinting && isCrouching)
+        {
+            StopSprint();
+            
+            if (slideCoroutine != null) StopCoroutine(slideCoroutine);
+            if (!alreadySliding && moveData.canSlide) slideCoroutine = StartCoroutine(Slide());
+        }
+
+        if(!isCrouching && isSliding)
+        {
+            StopSlide();
+        }
+
         if (crouchRoutine != null) StopCoroutine(crouchRoutine); // Bug-fix for the forever looping AdjustHeight() Coroutine bug.
         
         // Picks between crouchHeight and standHeight because StopCrouch() only works when toggleCrouch is disabled.
@@ -398,8 +456,43 @@ public class PlayerMovement : MonoBehaviour
     private void StopCrouch()
     {
         isCrouching = false;
+        if(isSliding)
+        {
+            StopSlide();
+        }
         if (crouchRoutine != null) StopCoroutine(crouchRoutine); // Bug-fix for the forever looping AdjustHeight() Coroutine bug.
         crouchRoutine = StartCoroutine(AdjustHeight(moveData.standHeight));
+    }
+    private IEnumerator Slide()
+    {
+        alreadySliding = true;
+        stopSlide = false;
+        isSliding = true;
+        
+        playerManager.playerAudio.source.pitch = 1;
+        playerManager.playerAudio.source.clip = playerManager.playerAudio.slideSound;
+        playerManager.playerAudio.source.PlayOneShot(playerManager.playerAudio.source.clip);
+
+        CancelInvoke(nameof(StopSlide));
+        Invoke(nameof(StopSlide), moveData.slideDuration * Time.deltaTime);
+        slideDir = moveDir;
+        while(!stopSlide)
+        {
+            slideDir = Vector3.Lerp(slideDir, Vector3.zero, moveData.slideDeacceleration * Time.deltaTime);
+            yield return null;
+        }
+    }
+    private void StopSlide()
+    {
+        stopSlide = true;
+        isSliding = false;
+        if (slideCoroutine != null) StopCoroutine(slideCoroutine);
+        CancelInvoke(nameof(ResetSlide));
+        Invoke(nameof(ResetSlide), moveData.slideCooldown * Time.deltaTime);
+    }
+    private void ResetSlide()
+    {
+        alreadySliding = false;
     }
     private IEnumerator AdjustHeight(float height) // Shortens and elongates the collider depending on the provided float value.
     {

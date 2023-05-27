@@ -84,7 +84,19 @@ public class CameraManager : MonoBehaviour {
     /// public float walkFov, sprintFov, crouchFov;
 
     [Header("Tilts")] // Gives that Half-life/Quake side tilts when strafing.
-    [SerializeField] public float moveTilt, tiltMultiplier;
+    [SerializeField] public bool Tilt;
+    [SerializeField] public bool tilt {
+        get { return Tilt; }
+        set
+        {
+            Tilt = value;
+            if (value == false)
+            {
+                targetMoveTilt = 0f;
+            }
+        }
+    }
+    [SerializeField] public float moveTilt, slideTilt, tiltMultiplier;
     [SerializeField] public float targetMoveTilt { get; set; }
 
     private void Start()
@@ -108,45 +120,50 @@ public class CameraManager : MonoBehaviour {
 		desyncOffset = Vector3.Lerp(desyncOffset, Vector3.zero, Time.deltaTime * 15f);
 
         // Self-explanatory
-        TiltCamera();
-        Headbob();
+        if(tilt)
+        {
+            TiltCamera();
+        }
+        MoveBob();
     }
 
     #region Camera Tilting
     private void TiltCamera()
     {
-        if (playerManager.playerMovement.isCrouching) // Dont tilt when crouching
+        if (playerManager.playerMovement.isCrouching && !playerManager.playerMovement.isSliding) // Dont tilt if setting is disabled or when crouching
         {
             targetMoveTilt = Mathf.Lerp(targetMoveTilt, 0f, tiltMultiplier * Time.deltaTime);
             return;
         }
 
-        float tilt;
+        float _moveTilt;
+        float _slideTilt = playerManager.playerMovement.isSliding ? slideTilt : 0f;
 
         /**
         Check for X input, do not use == 1 and == -1 because it will only work for keyboard input.
         Use > 0 and < 0 because this will help future-proof it just in case you want cross-platform.
         */
+        
         switch(playerManager.playerMovement.x)
         {
             case < 0f:
-                tilt = moveTilt;
+                _moveTilt = moveTilt;
             break;
             case > 0f:
-                tilt = -moveTilt;
+                _moveTilt = -moveTilt;
             break;
             default:
-                tilt = 0f;
+                _moveTilt = 0f;
             break;
         }
 
         // Finally do the math. See CameraController line 50
-        targetMoveTilt = Mathf.Lerp(targetMoveTilt, playerManager.playerMovement.y != 0 ? tilt / 2 : tilt, tiltMultiplier * Time.deltaTime);
+        targetMoveTilt = Mathf.Lerp(targetMoveTilt, (playerManager.playerMovement.y != 0 ? _moveTilt / 2 : _moveTilt) + _slideTilt, (playerManager.playerMovement.isSliding ? tiltMultiplier * 2f : tiltMultiplier) * Time.deltaTime);
     }
     #endregion
 
     #region Headbob Logic
-    private void Headbob()
+    private void MoveBob()
     {
         if (reduceMotion) // Not an epic gamer? Reset the position and rotation of camera to clear the effects of headbobbing.
         {
@@ -155,12 +172,6 @@ public class CameraManager : MonoBehaviour {
             moveBobPos = moveBobPos == Vector3.zero ? moveBobPos : Vector3.zero;
             moveBobRot = moveBobRot == Vector3.zero ? moveBobRot : Vector3.zero;
             return;
-        }
-
-        // This relies on the frame-dependent delay we have put in GroundChecker() at PlayerMovement.
-        if (playerManager.playerMovement.Fell && playerManager.playerMovement.coyoteGrounded())
-        {
-			BobOnce(new Vector3(0f, playerManager.playerMovement.fallSpeed, 0f));
         }
 
         var bobCondition = playerManager.playerMovement.isCrouching && playerManager.playerMovement.isSprinting;
@@ -173,7 +184,7 @@ public class CameraManager : MonoBehaviour {
         CheckMotion();
     }
 
-    public void BobOnce(Vector3 bobDirection) // Makes landing from mid-air feel better.
+    public void LandBob(Vector3 bobDirection) // Makes landing from mid-air feel better.
 	{
 		Vector3 bob = ClampVector(bobDirection * 0.15f, -3f, 3f);
 		desiredLandBob = bob * landBobMultiplier;
@@ -191,14 +202,21 @@ public class CameraManager : MonoBehaviour {
         // Reset the Z axis headbob/rotation when not sprinting and not grounded.
         if (!playerManager.playerMovement.isSprinting || !playerManager.playerMovement.coyoteGrounded()) ResetRotation();
 
+        if (playerManager.playerMovement.isCrouching)
+        {
+            ResetPosition();
+            return;
+        }
+
         if (speed < toggleSpeed) // Not enough speed? Reset the headbobbing.
         {
             ResetPosition();
             return;
         }
+
         if (!playerManager.playerMovement.coyoteGrounded()) return;
 
-        PlayMotion(FootstepMotion(), FootstepRotation()); // Do the headbobbing if it passes the criteria.
+        PlayMotion(FootstepMotion(), tilt ? FootstepRotation() : Vector3.zero); // Do the headbobbing if it passes the criteria.
     }
 
     private void ResetPosition() // Smoothly reset the position.

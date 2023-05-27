@@ -46,13 +46,18 @@ public class PlayerManager : MonoBehaviour
 
     public IEnumerator Start() // Initialize Player Camera if there is none, no need to put it yourself.
     {
+        InitializeCamera();
+        yield return new WaitForEndOfFrame();
+        UISettings.Instance.playerManager = this;
+    }
+
+    private void InitializeCamera()
+    {
         if (cameraManager == null && cameraController == null)
         {
             cameraManager = Instantiate(camPrefab, Vector3.zero, Quaternion.identity).GetComponent<CameraManager>();
             cameraManager.playerManager = this;
             cameraController = cameraManager.cameraController;
         }
-        yield return new WaitForEndOfFrame();
-        UISettings.Instance.playerManager = this;
     }
 }

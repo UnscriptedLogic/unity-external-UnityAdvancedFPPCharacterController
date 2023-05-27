@@ -12,25 +12,31 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 759dd7f3a939da645a5ecd2229ee45a9, type: 3}
   m_Name: TemplateMoveData
   m_EditorClassIdentifier: 
-  friction: 4
-  maxAcceleration: 10
-  maxAirAccel: 300
+  tagMovement: 1
+  acceleration: 5
+  tagSpeed: 2.5
+  tagDelay: 0.25
   walkSpeed: 5
   sprintSpeed: 8
   crouchSpeed: 2.5
+  slideSpeed: 20
   walkDamp: 4.5
   sprintDamp: 3.95
   crouchDamp: 20
   airSmoothen: 2.25
+  canSlide: 1
   heightLerp: 10
+  slideDuration: 225
+  slideCooldown: 50
+  slideDeacceleration: 1.75
   standHeight: 2
   crouchHeight: 1
   jumpForce: 2.5
   groundMask:
     serializedVersion: 2
     m_Bits: 1
-  CoyoteTimeMax: 0.1
+  antiBump: 5
   FallTimeMax: 0.25
-  groundDistance: 1
-  slopeSlideSpeed: 1
-  antiBump: 7
+  CoyoteTimeMax: 0.1
+  groundDistance: 5.24
+  slopeSlideSpeed: 5
