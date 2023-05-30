@@ -167,7 +167,9 @@ public class UISettings : MonoBehaviour
         playerManager.cameraManager.sensX = sensX.value;
         playerManager.cameraManager.sensY = sensY.value;
         playerManager.cameraController.damp = smoothing.value;
-        gameAudio.SetFloat("master", volume.value);
+
+        if (gameAudio)
+            gameAudio.SetFloat("master", volume.value);
     }
 }
 
